@@ -3,11 +3,23 @@ import "./App.css";
 import { MenuItem, Select, FormControl, Card, CardContent } from "@material-ui/core";
 import InfoBox from "./InfoBox";
 import Map from "./Map";
+import Table from "./Table";
+import { sortData } from "./util";
 
 function App() {
     // State is how to write a variable in react.
     const [countries, setCountries] = useState([]);
     const [country, setCountry] = useState("worldwide");
+    const [countryInfo, setCountryInfo] = useState({});
+    const [tableData, setTableData] = useState([]);
+
+    useEffect(() => {
+        fetch("https://disease.sh/v3/covid-19/all")
+            .then((response) => response.json())
+            .then((data) => {
+                setCountryInfo(data);
+            });
+    });
 
     // Use effect runs a piece of code based on a given condition
     useEffect(() => {
@@ -21,6 +33,8 @@ function App() {
                         name: country.country, // Denmark, Sweden
                         value: country.countryInfo.iso2, // DK, SE
                     }));
+                    const sortedData = sortData(data);
+                    setTableData(sortedData);
                     setCountries(countries);
                 });
         };
@@ -30,7 +44,20 @@ function App() {
     const onCountryChange = async (event) => {
         const countryCode = event.target.value;
 
-        setCountry(countryCode);
+        const url =
+            countryCode === "worldwide"
+                ? "https://disease.sh/v3/covid-19/all"
+                : `https://disease.sh/v3/covid-19/countries/${countryCode}`;
+
+        await fetch(url)
+            .then((response) => response.json())
+            .then((data) => {
+                setCountry(countryCode);
+                setCountryInfo(data);
+            });
+
+        //https://disease.sh/v3/covid-19/all <= for wouldwide
+        //https://disease.sh/v3/covid-19/countries/[COUNTRY_CODE]
     };
     return (
         <div className="app">
@@ -49,23 +76,23 @@ function App() {
                 </div>
 
                 <div className="app__stats">
-                    <InfoBox title="Coronavirus Cases" cases={10000} total={3000} />
-                    <InfoBox title="Recovered" cases={10000} total={200} />
-                    <InfoBox title="Deaths" cases={10000} total={1000} />
+                    <InfoBox title="Coronavirus Cases" cases={countryInfo.todayCases} total={countryInfo.cases} />
+                    <InfoBox title="Recovered" cases={countryInfo.todayRecovered} total={countryInfo.recovered} />
+                    <InfoBox title="Deaths" cases={countryInfo.todayDeaths} total={countryInfo.deaths} />
                 </div>
 
                 <div>
                     <Map></Map>
                 </div>
             </div>
-            <div className="app__right">
-                <Card>
-                    <CardContent>
-                                <h3>Live cases by country</h3>
-                                <h3>Worldwide new cases</h3>
-                    </CardContent>
-                </Card>
-            </div>
+            <Card className="app__right">
+                <CardContent>
+                    <h3>Live cases by country</h3>
+                    <Table countries={tableData} />
+
+                    <h3>Worldwide new cases</h3>
+                </CardContent>
+            </Card>
         </div>
     );
 }
